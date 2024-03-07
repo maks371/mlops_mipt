@@ -1,0 +1,12 @@
+**/__pycache__
+**/.idea
+*.DS_Store
+**/venv
+*.pt
+*.pth
+*.ckpt
+*.zip
+**/tests
+**/additonal_files
+**/lightning_logs
+
