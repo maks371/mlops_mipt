@@ -2,6 +2,7 @@
 <br>
 
 ## Структура проекта
+```
 .
 ├── Dockerfile
 ├── README.md
@@ -14,7 +15,7 @@
 ├── infer.py
 ├── requirements.txt
 └── train.py
-<b>
+```
 
 <b>1. Формулировка задачи</b>
 <hr> 
