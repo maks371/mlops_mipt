@@ -6,7 +6,7 @@
 *.pth
 *.ckpt
 *.zip
-**/tests
+*.ipynb
 **/additonal_files
 **/lightning_logs
-
+.ipynb_checkpoints
