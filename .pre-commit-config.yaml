@@ -9,7 +9,6 @@ repos:
       - id: check-json
       - id: check-added-large-files
       - id: end-of-file-fixer
-      - id: trailing-whitespace
       - id: check-case-conflict
       - id: mixed-line-ending
 

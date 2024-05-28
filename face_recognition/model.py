@@ -15,7 +15,9 @@ class Identity(nn.Module):
 class CosModel(nn.Module):
     def __init__(self):
         super(CosModel, self).__init__()
-        model = InceptionResnetV1(pretrained='vggface2', classify=True, num_classes=1000)
+        model = InceptionResnetV1(
+            pretrained="vggface2", classify=True, num_classes=1000
+        )
         for param in model.parameters():
             param.requires_grad = False
         for param in model.block8.parameters():

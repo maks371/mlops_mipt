@@ -1,17 +1,18 @@
 import os
+
 from PIL import Image
 from torch.utils.data import Dataset
 
 
-def get_paths(celeb_a_path, dataset_type='train'):
+def get_paths(celeb_a_path, dataset_type="train"):
 
     labels_dict = {
-        'train': 0,
-        'val': 1,
-        'test': 2,
+        "train": 0,
+        "val": 1,
+        "test": 2,
     }
 
-    with open(f'{celeb_a_path}/celebA_train_split.txt', 'r') as f:
+    with open(f"{celeb_a_path}/celebA_train_split.txt", "r") as f:
         lines = f.readlines()
 
     lines = [x.strip().split() for x in lines]
@@ -19,14 +20,14 @@ def get_paths(celeb_a_path, dataset_type='train'):
 
     images_paths = []
     for filename in lines:
-        images_paths.append(os.path.join(f'{celeb_a_path}/celebA_imgs/', filename))
+        images_paths.append(os.path.join(f"{celeb_a_path}/celebA_imgs/", filename))
 
-    with open(f'{celeb_a_path}/celebA_anno.txt', 'r') as f:
+    with open(f"{celeb_a_path}/celebA_anno.txt", "r") as f:
         labels = f.readlines()
 
     labels = [x.strip().split() for x in labels]
     labels = {x: y for x, y in labels}
-    labels = [labels[x.split('/')[-1]] for x in images_paths]
+    labels = [labels[x.split("/")[-1]] for x in images_paths]
 
     return images_paths, labels
 
@@ -56,10 +57,10 @@ class CelebADataset(Dataset):
             )
         else:
             sample = {
-                'image': image,
-                'label': label,
+                "image": image,
+                "label": label,
             }
 
-        sample['image'] = self.transform(sample['image'])
+        sample["image"] = self.transform(sample["image"])
 
         return sample

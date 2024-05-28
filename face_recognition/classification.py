@@ -1,5 +1,6 @@
-import torch
 from collections import defaultdict
+
+import torch
 
 
 def compute_avg_embeddings(model, train_data, device):
@@ -20,8 +21,10 @@ def compute_avg_embeddings(model, train_data, device):
 
 def predict(image_embeddings, avg_embeddings):
     numerator = (image_embeddings * avg_embeddings).sum(dim=-1)
-    denominator = torch.sqrt(torch.pow(image_embeddings, 2).sum(dim=-1)
-                             * torch.pow(avg_embeddings, 2).sum(dim=-1))
+    denominator = torch.sqrt(
+        torch.pow(image_embeddings, 2).sum(dim=-1)
+        * torch.pow(avg_embeddings, 2).sum(dim=-1)
+    )
     batch_cosine_similarity = numerator / denominator
     pred = torch.argmax(batch_cosine_similarity, dim=-1)
     return pred
@@ -30,7 +33,7 @@ def predict(image_embeddings, avg_embeddings):
 def get_predictions(model, test_loader, device, avg_embeddings):
     predictions = []
     for i in test_loader:
-        X_batch, _ = i['image'], i['label']
+        X_batch, _ = i["image"], i["label"]
         emb, _ = model(X_batch.to(device))
         pred = predict(emb.detach()[:, None, :], avg_embeddings[None, :, :])
         predictions += pred.tolist()
