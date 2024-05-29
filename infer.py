@@ -38,3 +38,11 @@ def predict_and_save(data_folder, model_folder, save_file):
             fp.write("%s\n" % label)
 
     print("Inference done!")
+
+
+def main():
+    fire.Fire(predict_and_save)
+
+
+if __name__ == "__main__":
+    main()
