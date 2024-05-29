@@ -3,16 +3,29 @@ import torch.nn.functional as F
 from torch.optim import lr_scheduler
 
 
-def cos_face_loss(cos_theta, y, m, s):
-    y_oh = F.one_hot(y, 1000)
+def cos_face_loss(cos_theta, y, m, s, n_classes):
+    y_oh = F.one_hot(y, n_classes)
     cos_theta_m = cos_theta - m * y_oh
     logits = cos_theta_m * s
     return F.cross_entropy(logits, y)
 
 
-def train_epochs(model, opt, loss_fn, epochs, data_tr, data_val, s, m):
+def train_epochs(
+    device,
+    model,
+    opt,
+    loss_fn,
+    epochs,
+    data_tr,
+    data_val,
+    s,
+    m,
+    step_size,
+    gamma,
+    n_classes,
+):
     history = []
-    scheduler = lr_scheduler.StepLR(opt, step_size=3, gamma=0.5)
+    scheduler = lr_scheduler.StepLR(opt, step_size=step_size, gamma=gamma)
 
     for epoch in range(epochs):
         print("* Epoch %d/%d" % (epoch + 1, epochs))
@@ -25,7 +38,7 @@ def train_epochs(model, opt, loss_fn, epochs, data_tr, data_val, s, m):
             Y_batch = Y_batch.to(device)
             opt.zero_grad()
             features, cos_theta = model(X_batch)
-            loss = loss_fn(cos_theta, Y_batch, m, s)
+            loss = loss_fn(cos_theta, Y_batch, m, s, n_classes)
             loss.backward()
             opt.step()
             train_avg_loss += loss.item() / len(data_tr)

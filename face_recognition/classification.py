@@ -3,13 +3,13 @@ from collections import defaultdict
 import torch
 
 
-def compute_avg_embeddings(model, train_data, device):
+def compute_avg_embeddings(model, train_data, device, n_classes):
     images_for_class = defaultdict(list)
     for sample in train_data:
         images_for_class[sample["label"]].append(sample["image"][None, :, :, :])
 
     avg_embeddings_list = []
-    for i in range(1000):
+    for i in range(n_classes):
         pictures = torch.cat(images_for_class[i], dim=0)
         embeddings, _ = model(pictures.to(device))
         embeddings = embeddings.detach()

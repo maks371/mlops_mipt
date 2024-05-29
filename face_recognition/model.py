@@ -13,8 +13,10 @@ class Identity(nn.Module):
 
 
 class CosModel(nn.Module):
-    def __init__(self):
+    def __init__(self, n_classes, output_dim):
         super(CosModel, self).__init__()
+        self.n_classes = n_classes
+        self.output_dim = output_dim
         model = InceptionResnetV1(
             pretrained="vggface2", classify=True, num_classes=1000
         )
@@ -32,7 +34,9 @@ class CosModel(nn.Module):
         model.logits = Identity()
         self.features = model
 
-        self.my_weights = torch.nn.Parameter(torch.rand(1000, 512, requires_grad=True))
+        self.my_weights = torch.nn.Parameter(
+            torch.rand(n_classes, output_dim, requires_grad=True)
+        )
 
     def forward(self, x):
         feat = self.features(x)

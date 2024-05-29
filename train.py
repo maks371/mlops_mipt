@@ -1,5 +1,6 @@
-import fire
+import hydra
 import torch
+from omegaconf import DictConfig
 from torchvision import transforms
 
 from face_recognition.classification import compute_avg_embeddings
@@ -8,23 +9,23 @@ from face_recognition.model import CosModel
 from face_recognition.train_model import cos_face_loss, train_epochs
 
 
-def train_and_save(data_folder, save_folder):
+def train_and_save(cfg: DictConfig):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = CosModel().to(device)
+    model = CosModel(cfg["n_classes"], cfg["output_dim"]).to(device)
 
     transform = transforms.Compose(
         [
-            transforms.Resize(160),
+            transforms.Resize(cfg["resize"]),
             transforms.ToTensor(),
-            transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+            transforms.Normalize(cfg["normalize_mean"], cfg["normalize_std"]),
         ]
     )
 
-    train_data = CelebADataset(data_folder, "train", transform)
-    val_data = CelebADataset(data_folder, "val", transform)
+    train_data = CelebADataset(cfg["data_folder"], "train", transform)
+    val_data = CelebADataset(cfg["data_folder"], "val", transform)
 
-    batch_size = 128
+    batch_size = cfg["batch_size"]
     train_loader = torch.utils.data.DataLoader(
         train_data, batch_size=batch_size, shuffle=True
     )
@@ -33,20 +34,37 @@ def train_and_save(data_folder, save_folder):
     )
 
     loss = cos_face_loss
-    epochs_number = 10
-    opt = torch.optim.Adam(model.parameters(), lr=0.003, weight_decay=5e-4)
-    history = train_epochs(
-        model, opt, loss, epochs_number, train_loader, val_loader, m=0.35, s=16
+    epochs_number = cfg["epochs_number"]
+    opt = torch.optim.Adam(
+        model.parameters(), lr=cfg["lr"], weight_decay=cfg["weight_decay"]
     )
-    torch.save(model.state_dict(), f"{save_folder}/model_weights.pth")
 
-    avg_embeddings = compute_avg_embeddings(model, train_data, device)
-    torch.save(avg_embeddings, f"{save_folder}/avg_embeddings.pth")
+    cos_face_params = cfg["cos_face_params"]
+    scheduler_params = cfg["scheduler_params"]
+    history = train_epochs(
+        device,
+        model,
+        opt,
+        loss,
+        epochs_number,
+        train_loader,
+        val_loader,
+        cos_face_params["m"],
+        cos_face_params["s"],
+        scheduler_params["step_size"],
+        scheduler_params["gamma"],
+        cfg["n_classes"],
+    )
+    torch.save(model.state_dict(), f"{cfg['save_folder']}/model_weights.pth")
+
+    avg_embeddings = compute_avg_embeddings(model, train_data, device, cfg["n_classes"])
+    torch.save(avg_embeddings, f"{cfg['save_folder']}/avg_embeddings.pth")
     print("Train done!")
 
 
-def main():
-    fire.Fire(train_and_save)
+@hydra.main(version_base=None, config_path="conf", config_name="config")
+def main(cfg: DictConfig) -> None:
+    train_and_save(cfg["train_params"])
 
 
 if __name__ == "__main__":

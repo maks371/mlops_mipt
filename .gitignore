@@ -10,3 +10,4 @@
 **/additonal_files
 **/lightning_logs
 .ipynb_checkpoints
+/outputs

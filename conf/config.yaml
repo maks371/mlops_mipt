@@ -1,0 +1,30 @@
+train_params:
+  data_folder: "data/celebA_train_1k"
+  save_folder: "data"
+  resize: 160
+  normalize_mean: [0.485, 0.456, 0.406]
+  normalize_std: [0.229, 0.224, 0.225]
+  batch_size: 128
+  epochs_number: 10
+  lr: 0.003
+  weight_decay: 5e-4
+  cos_face_params:
+    m: 0.35
+    s: 16
+  scheduler_params:
+    step_size: 3
+    gamma: 0.5
+  n_classes: 1000
+  output_dim: 512
+
+
+infer_params:
+  data_folder: "data/celebA_train_1k"
+  model_folder: "data"
+  save_file: "prediction.txt"
+  resize: 160
+  normalize_mean: [0.485, 0.456, 0.406]
+  normalize_std: [0.229, 0.224, 0.225]
+  batch_size: 128
+  n_classes: 1000
+  output_dim: 512
