@@ -1,67 +1,92 @@
+import pytorch_lightning as pl
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import lr_scheduler
 
-
-def cos_face_loss(cos_theta, y, m, s, n_classes):
-    y_oh = F.one_hot(y, n_classes)
-    cos_theta_m = cos_theta - m * y_oh
-    logits = cos_theta_m * s
-    return F.cross_entropy(logits, y)
+from .model import CosModel
 
 
-def train_epochs(
-    device,
-    model,
-    opt,
-    loss_fn,
-    epochs,
-    data_tr,
-    data_val,
-    s,
-    m,
-    step_size,
-    gamma,
-    n_classes,
-):
-    history = []
-    scheduler = lr_scheduler.StepLR(opt, step_size=step_size, gamma=gamma)
+class CosFaceLoss(nn.Module):
+    def __init__(self, m, s, n_classes):
+        super(CosFaceLoss, self).__init__()
+        self.m = m
+        self.s = s
+        self.n_classes = n_classes
 
-    for epoch in range(epochs):
-        print("* Epoch %d/%d" % (epoch + 1, epochs))
+    def forward(self, cos_theta, y):
+        y_oh = F.one_hot(y, self.n_classes)
+        cos_theta_m = cos_theta - self.m * y_oh
+        logits = cos_theta_m * self.s
+        return F.cross_entropy(logits, y)
 
-        train_avg_loss = 0
-        model.train()
-        for i in data_tr:
-            X_batch, Y_batch = i["image"], i["label"]
-            X_batch = X_batch.to(device)
-            Y_batch = Y_batch.to(device)
-            opt.zero_grad()
-            features, cos_theta = model(X_batch)
-            loss = loss_fn(cos_theta, Y_batch, m, s, n_classes)
-            loss.backward()
-            opt.step()
-            train_avg_loss += loss.item() / len(data_tr)
-        print("train_loss: %f" % train_avg_loss)
 
-        model.eval()
-        val_avg_loss = 0
-        val_avg_acc = 0
-        with torch.no_grad():
-            for j in data_val:
-                X_val, Y_val = j["image"], j["label"]
-                X_val = X_val.to(device)
-                Y_val = Y_val.to(device)
-                features, cos_theta = model(X_val)
-                val_los = loss_fn(cos_theta, Y_val, m, s)
-                pred = torch.argmax(cos_theta, dim=-1)
-                val_acc = (pred == Y_val).sum() / len(Y_val)
-                val_avg_loss += val_los.item() / len(data_val)
-                val_avg_acc += val_acc.item() / len(data_val)
+class MyTrainingModule(pl.LightningModule):
+    def __init__(self, lr, weight_decay, s, m, n_classes, output_dim, step_size, gamma):
+        super().__init__()
+        self.model = CosModel(n_classes, output_dim)
+        self.loss = CosFaceLoss(s, m, n_classes)
+        self.n_classes = n_classes
+        self.lr = lr
+        self.weight_decay = weight_decay
+        self.step_size = step_size
+        self.gamma = gamma
 
-        print("val_loss: %f" % val_avg_loss)
-        print("val_acc: %f" % val_avg_acc)
-        history.append([train_avg_loss, val_avg_loss])
-        scheduler.step()
+    def training_step(self, batch, batch_idx):
+        """The full training loop"""
+        X_val, Y_val = batch["image"], batch["label"]
+        features, cos_theta = self.model(X_val)
+        loss = self.loss(cos_theta, Y_val)
 
-    return history
+        metrics = {"train_loss": loss}
+        self.log_dict(metrics, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+        return loss
+
+    def configure_optimizers(self):
+        """Define optimizers and LR schedulers."""
+        optimizer = torch.optim.Adam(
+            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
+        scheduler = lr_scheduler.StepLR(
+            optimizer, step_size=self.step_size, gamma=self.gamma
+        )
+        lr_dict = {
+            "scheduler": scheduler,
+            "interval": "epoch",
+            "frequency": 1,
+            "monitor": "val_loss",
+        }
+
+        return [optimizer], [lr_dict]
+
+    def validation_step(self, batch, batch_idx):
+        X_val, Y_val = batch["image"], batch["label"]
+        features, cos_theta = self.model(X_val)
+        loss = self.loss(cos_theta, Y_val)
+
+        metrics = {"val_loss": loss}
+        self.log_dict(metrics, prog_bar=True, on_step=False, on_epoch=True, logger=True)
+
+        return metrics
+
+
+def train_model(cfg, train_loader, val_loader, device):
+    trainer = pl.Trainer(
+        max_epochs=cfg["epochs_number"],
+        accelerator=device,
+        enable_checkpointing=False,
+        logger=False,
+    )
+    training_module = MyTrainingModule(
+        lr=cfg["lr"],
+        weight_decay=cfg["weight_decay"],
+        s=cfg["cos_face_params"]["s"],
+        m=cfg["cos_face_params"]["m"],
+        n_classes=cfg["n_classes"],
+        output_dim=cfg["output_dim"],
+        step_size=cfg["scheduler_params"]["step_size"],
+        gamma=cfg["scheduler_params"]["step_size"],
+    )
+
+    trainer.fit(training_module, train_loader, val_loader)
+    return training_module.model

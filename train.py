@@ -6,14 +6,10 @@ from torchvision import transforms
 from face_recognition.classification import compute_avg_embeddings
 from face_recognition.custom_dataset import CelebADataset
 from face_recognition.model import CosModel
-from face_recognition.train_model import cos_face_loss, train_epochs
+from face_recognition.train_model import train_model
 
 
 def train_and_save(cfg: DictConfig):
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    model = CosModel(cfg["n_classes"], cfg["output_dim"]).to(device)
-
     transform = transforms.Compose(
         [
             transforms.Resize(cfg["resize"]),
@@ -32,29 +28,9 @@ def train_and_save(cfg: DictConfig):
     val_loader = torch.utils.data.DataLoader(
         val_data, batch_size=batch_size, shuffle=False
     )
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    loss = cos_face_loss
-    epochs_number = cfg["epochs_number"]
-    opt = torch.optim.Adam(
-        model.parameters(), lr=cfg["lr"], weight_decay=cfg["weight_decay"]
-    )
-
-    cos_face_params = cfg["cos_face_params"]
-    scheduler_params = cfg["scheduler_params"]
-    history = train_epochs(
-        device,
-        model,
-        opt,
-        loss,
-        epochs_number,
-        train_loader,
-        val_loader,
-        cos_face_params["m"],
-        cos_face_params["s"],
-        scheduler_params["step_size"],
-        scheduler_params["gamma"],
-        cfg["n_classes"],
-    )
+    model = train_model(cfg, train_loader, val_loader, device)
     torch.save(model.state_dict(), f"{cfg['save_folder']}/model_weights.pth")
 
     avg_embeddings = compute_avg_embeddings(model, train_data, device, cfg["n_classes"])
